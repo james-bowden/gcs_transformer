@@ -9,17 +9,17 @@ import torchtune
 import torch.optim as optim
 
 class GCSTransformer(nn.Module):
-    def __init__(self, num_time_bins = 512, num_space_bins = 1024, d_model = 128*6, nhead = 8, num_layers = 12, num_map_tokens = 36, num_channels = 6):
+    def __init__(self, num_time_bins = 512, num_space_bins = 1024, d_model = 128*6, nhead = 8, nlayers = 12, num_map_tokens = 36, num_channels = 6):
         super().__init__()
 
         self.num_time_bins = num_time_bins
         self.num_space_bins = num_space_bins
         self.num_map_tokens = num_map_tokens
         self.num_channels = num_channels
-        self.num_layers = num_layers
+        self.num_layers = nlayers
+        self.d_model = d_model
         self.embedding_dim = self.d_model // self.num_channels
 
-        self.d_model = d_model
         self.nhead = nhead
         self.d_head = d_model // self.nhead
 

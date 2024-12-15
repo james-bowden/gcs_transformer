@@ -13,26 +13,42 @@ class GCSDataset(Dataset):
 
     def __init__(
         self,
-        data_folder: str,
+        data_file: str,
     ):
-    
-    self.data_folder = data_folder
-    self.data_index = []
 
-    # Get data files
-    self.data_files = glob.glob(os.path.join(self.data_folder, "*.npy"))
+        # Get data files
+        with open(os.path.join(data_file), "r") as f:
+            self.data_files = [file.rstrip("\n") for file in f.readlines()]
+        print("Number of data files: ", len(self.data_files))
+        self._build_index()
+        print("Number of samples: ", len(self.index))
+    
+    def _build_index(self):
+        self.index = []
+        for file in self.data_files:
+            sample = np.load(file, allow_pickle=True)
+            map_array = sample["map"]
+            times = sample["times"]
+            trajs = sample["trajs"]
+            for traj_idx in range(len(trajs)):
+                self.index.append((file, traj_idx))
 
 
     def __len__(self):
-        return len(self.data_index)
+        return len(self.index)
 
     def __getitem__(self, idx):
 
         # Load in data
-        sample = np.load(self.data_files[idx])
-        map_array = sample["map_array"]
+        file, traj_idx = self.index[idx]
+        sample = np.load(file, allow_pickle=True)
+        map_array = sample["map"]
         times = sample["times"]
-        trajs = sample["trajs"]
+        trajs = sample["trajs"][traj_idx]
+        breakpoint()
+        print("map_array: ", map_array.shape)
+        print("times: ", times.shape)
+        print("trajs: ", trajs.shape)
 
         return (torch.as_tensor(map_array, dtype=torch.float32), 
                 torch.as_tensor(times, dtype=torch.float32), 

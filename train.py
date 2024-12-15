@@ -12,8 +12,8 @@ import torchtune
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from gcs_transformer.model import GCSTransformer
-from gcs_transformer.dataset import GCSDataset
+from model import GCSTransformer
+from dataset import GCSDataset
 
 
 def loss_fn(pred_logits, labels, vocab_size):
@@ -22,22 +22,22 @@ def loss_fn(pred_logits, labels, vocab_size):
     return F.cross_entropy(shifted_pred_logits, shifted_labels)
 
 def train(config, args):
-    device = args.device
+    device = config["device"]
     num_epochs = config["num_epochs"]
     batch_size = config["batch_size"]
 
     # create dataset 
     train_dataset = GCSDataset(config["train_data_folder"])
-    test_dataset = GCSDataset(config["test_data_folder"])
+    eval_dataset = GCSDataset(config["eval_data_folder"])
 
     # create dataloader
-    train_loader = DataLoader(
+    train_dataloader = DataLoader(
         train_dataset,
         batch_size=config["batch_size"],
         shuffle=True,
     )
-    test_loader = DataLoader(
-        test_dataset,
+    eval_dataloader = DataLoader(
+        eval_dataset,
         batch_size=config["batch_size"],
         shuffle=False,
     )
@@ -49,14 +49,13 @@ def train(config, args):
                             nhead=config["num_heads"],
                             nlayers=config["num_layers"],
                             num_map_tokens=config["num_map_tokens"],
-                            num_channels=config["num_channels"],
-                            device=config["device"]).to(device)
+                            num_channels=config["num_channels"]).to(device)
 
     # create optimizer 
     optimizer = optim.SGD(policy.parameters(), lr=0.01)
 
     # Set up training for number of epochs 
-    for epoch in range(self.num_epochs):
+    for epoch in range(num_epochs):
         print("Epoch: ", epoch)
 
         # Train model
@@ -64,7 +63,7 @@ def train(config, args):
         num_batches = len(train_dataloader)
         tqdm_iter = tqdm.tqdm(
             train_dataloader,
-            disable=not use_tqdm,
+            disable=False,
             dynamic_ncols=True,
             desc=f"Training epoch {epoch}",
         )
@@ -75,9 +74,9 @@ def train(config, args):
                 trajs,
             ) = data
 
-            map_array = map_array.to(device)
-            times = times.to(device)
-            trajs = trajs.to(device)
+            map_tensor = map_array.to(device)
+            times_tensor = times.to(device)
+            traj_tensor = trajs.to(device)
 
             optimizer.zero_grad()
             pred_logits = policy(map_tensor, traj_tensor)
@@ -93,8 +92,8 @@ def train(config, args):
             with torch.no_grad():
                 num_batches = len(train_dataloader)
                 tqdm_iter = tqdm.tqdm(
-                    test_dataloader,
-                    disable=not use_tqdm,
+                    eval_dataloader,
+                    disable=False,
                     dynamic_ncols=True,
                     desc=f"Training epoch {epoch}",
                 )
@@ -112,8 +111,6 @@ def train(config, args):
                     loss = loss_fn(pred_logits, trajs, policy.traj_embs.num_embeddings)
                     print("Validation Loss: ", round(loss.item(), 4), round(torch.mean((torch.argmax(pred_logits[:, :-1], dim=-1) == traj_tensor[:, 1:]) * 1.).item(), 4))
 
-        print(f"Epoch {epoch}, Loss: {total_loss}")
-
 def main(args):
     with open("config/default.yaml") as f:
         config = yaml.safe_load(f)
@@ -123,7 +120,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, default="config/default.yaml")
+    parser.add_argument("--config", '-c', type=str, default="config/default.yaml")
     args = parser.parse_args()
     main(args)
 
