@@ -34,9 +34,9 @@ class GCSDataset(Dataset):
         times = sample["times"]
         trajs = sample["trajs"]
 
-        return (map_array, 
-                times, 
-                trajs)
+        return (torch.as_tensor(map_array, dtype=torch.float32), 
+                torch.as_tensor(times, dtype=torch.float32), 
+                torch.as_tensor(trajs, dtype=torch.float32))
 
 
 
