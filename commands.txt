@@ -1,0 +1,11 @@
+# Get the docker img
+docker pull russtedrake/underactuated:e849980
+
+# Start the docker img with interactive shell
+docker run -it -p 8888:8888 -p 7000:7000 -v /home/will/Classwork/EE227B/new_mounted_dir:/mnt russtedrake/underactuated:e849980 bash
+
+cd /mnt
+sed -i '/jedi/d;/jupyter/d;' ./requirements.txt
+pip install -r ./requirements.txt
+pip install --upgrade --no-cache-dir notebook==6.*
+jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root
