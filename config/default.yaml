@@ -1,0 +1,19 @@
+
+# model
+num_time_bins: 512
+num_space_bins: 1024
+d_model: 768
+nhead: 8
+num_layers: 12
+num_map_tokens: 36
+num_channels: 6
+device: cuda:0
+
+# training 
+num_epochs: 100
+batch_size: 256
+eval_freq: 10
+
+# dataset
+train_data_folder: /nfs/kun2/users/will/tokenized_data_dir/train
+test_data_folder: /nfs/kun2/users/will/tokenized_data_dir/test
