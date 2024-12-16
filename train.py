@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import yaml
 import tqdm
 import argparse
+import wandb
 
 import torch
 import torch.nn.functional as F
@@ -13,7 +14,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 
 from model import GCSTransformer
-from dataset import GCSDataset
+from data.dataset import GCSDataset
 
 
 def loss_fn(pred_logits, labels, vocab_size):
@@ -26,6 +27,9 @@ def train(config, args):
     num_epochs = config["num_epochs"]
     batch_size = config["batch_size"]
 
+    # Make save dir
+    os.makedirs(config["save_path"], exist_ok=True)
+    
     # create dataset 
     train_dataset = GCSDataset(config["train_data_folder"])
     eval_dataset = GCSDataset(config["eval_data_folder"])
@@ -41,6 +45,8 @@ def train(config, args):
         batch_size=config["batch_size"],
         shuffle=False,
     )
+
+    print("Num batches: ", len(train_dataloader))
 
     # create model 
     policy = GCSTransformer(num_time_bins = config["num_time_bins"],
@@ -84,36 +90,47 @@ def train(config, args):
             loss.backward()
             optimizer.step()
             print("Training Loss: ", round(loss.item(), 4), round(torch.mean((torch.argmax(pred_logits[:, :-1], dim=-1) == traj_tensor[:, 1:]) * 1.).item(), 4))
+            wandb.log({"train_loss": loss.item()})
 
-        # Evaluate model
-        if i % config["eval_freq"] == 0:
+            if i % config["save_freq"] == 0:
+                torch.save(policy.state_dict(), f"{config['save_path']}/model_{epoch}.pth")
+                print(f"Model saved to {config['save_path']}/model_{epoch}.pth")
 
-            policy.eval()
-            with torch.no_grad():
-                num_batches = len(train_dataloader)
-                tqdm_iter = tqdm.tqdm(
-                    eval_dataloader,
-                    disable=False,
-                    dynamic_ncols=True,
-                    desc=f"Training epoch {epoch}",
-                )
-                for i, data in enumerate(tqdm_iter):
-                    (
-                        map_array,
-                        times,
-                        trajs,
-                    ) = data
-                    map_array = map_array.to(device)
-                    times = times.to(device)
-                    trajs = trajs.to(device)
 
-                    pred_logits = policy(map_array, trajs)
-                    loss = loss_fn(pred_logits, trajs, policy.traj_embs.num_embeddings)
-                    print("Validation Loss: ", round(loss.item(), 4), round(torch.mean((torch.argmax(pred_logits[:, :-1], dim=-1) == traj_tensor[:, 1:]) * 1.).item(), 4))
+        policy.eval()
+        with torch.no_grad():
+            tqdm_iter = tqdm.tqdm(
+                eval_dataloader,
+                disable=False,
+                dynamic_ncols=True,
+                desc=f"Training epoch {epoch}",
+            )
+            for i, data in enumerate(tqdm_iter):
+                (
+                    map_array,
+                    times,
+                    trajs,
+                ) = data
+                map_array = map_array.to(device)
+                times = times.to(device)
+                trajs = trajs.to(device)
+
+                pred_logits = policy(map_array, trajs)
+                loss = loss_fn(pred_logits, trajs, policy.traj_embs.num_embeddings)
+                print("Validation Loss: ", round(loss.item(), 4), round(torch.mean((torch.argmax(pred_logits[:, :-1], dim=-1) == traj_tensor[:, 1:]) * 1.).item(), 4))
+                wandb.log({"val_loss": loss.item()})
+
+    wandb.log({})
+    print()
 
 def main(args):
     with open("config/default.yaml") as f:
         config = yaml.safe_load(f)
+    if config["use_wandb"]:
+        wandb.login()
+        wandb.init(project="gcs_transformer",
+                   entity="catglossop",)
+        wandb.save(args.config, policy="now")
 
     print("Starting training...")
     train(config, args)

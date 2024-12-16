@@ -9,7 +9,7 @@ import torchtune
 import torch.optim as optim
 
 class GCSTransformer(nn.Module):
-    def __init__(self, num_time_bins = 512, num_space_bins = 1024, d_model = 128*6, nhead = 8, nlayers = 12, num_map_tokens = 36, num_channels = 6):
+    def __init__(self, num_time_bins = 512, num_space_bins = 1024, d_model = 128*6, nhead = 8, nlayers = 12, num_map_tokens = 16, num_channels = 6):
         super().__init__()
 
         self.num_time_bins = num_time_bins
@@ -46,7 +46,7 @@ class GCSTransformer(nn.Module):
 
         batch_size, traj_seq_len = trajs.shape
         traj_embs = self.traj_embs(trajs)
-
+        
         # Apply rope after concatenating map and traj embs, then split again.
         all_embs = torch.cat([map_embs, traj_embs], dim=1).reshape(batch_size, map_seq_len + traj_seq_len, self.nhead, self.d_head)
         all_embs = self.rope(all_embs).reshape(batch_size, map_seq_len + traj_seq_len, -1)
@@ -56,6 +56,7 @@ class GCSTransformer(nn.Module):
 
         # Pass through transformer
         # [batch_size, traj_seq_len, d_model]
+
         output = self.transformer(src = map_embs, tgt = traj_embs,
                                   tgt_mask = nn.Transformer.generate_square_subsequent_mask(traj_seq_len, device=map_array.device),
                                   src_is_causal = False,

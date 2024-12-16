@@ -5,14 +5,17 @@ num_space_bins: 1024
 d_model: 768
 num_heads: 8
 num_layers: 12
-num_map_tokens: 36
+num_map_tokens: 16
 num_channels: 6
 device: cuda:0
 
 # training 
 num_epochs: 100
-batch_size: 256
+batch_size: 16
 eval_freq: 10
+use_wandb: True
+save_freq: 1000
+save_path: /nfs/kun2/users/cglossop/gcs_saved_models
 
 # dataset
 train_data_folder: /nfs/kun2/users/cglossop/tokenized_data_dir/train/train_files.txt
