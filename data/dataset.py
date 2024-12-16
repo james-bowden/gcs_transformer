@@ -31,25 +31,28 @@ class GCSDataset(Dataset):
         self._build_index()
         print("Number of samples: ", len(self.index))
     
+
     def _build_index(self):
-        self.index = []
-        for file in self.data_files:
-            sample = np.load(file, allow_pickle=True)
-            map_array = sample["map"]
-            times = sample["times"]
-            trajs = sample["trajs"]
-            traj_idx_3 = 0
-            if not trajs[traj_idx_3].shape[1] < self.max_seq_len - 2:
-                continue
-            for traj_idx_2 in range(1, len(trajs)-1, 5):
-                if not trajs[traj_idx_2].shape[1] < self.max_seq_len - 2:
-                    continue
-                for traj_idx_1 in range(traj_idx_2, len(trajs), 5):
-                    if not trajs[traj_idx_1].shape[1] < self.max_seq_len - 2:
-                        continue
+        self.index = self.data_files
+        # self.index = []
+        # for file in self.data_files:
+        #     sample = np.load(file, allow_pickle=True)
+        #     map_array = sample["map"]
+        #     times = sample["times"]
+        #     trajs = sample["trajs"]
+        #     traj_idx_3 = 0
+        #     if not trajs[traj_idx_3].shape[1] < self.max_seq_len - 2:
+        #         continue
+        #     for traj_idx_2 in range(1, len(trajs)-1, 5):
+        #         if not trajs[traj_idx_2].shape[1] < self.max_seq_len - 2:
+        #             continue
+        #         for traj_idx_1 in range(traj_idx_2, len(trajs), 5):
+        #             if not trajs[traj_idx_1].shape[1] < self.max_seq_len - 2:
+        #                 continue
                 
-                    self.index.append((file, traj_idx_1, traj_idx_2, traj_idx_3))
+        #             self.index.append((file, traj_idx_1, traj_idx_2, traj_idx_3))
         random.shuffle(self.index)
+
     def _add_tokens(self, traj):
         return np.concatenate([self.sos_token, traj, self.eos_token], axis=0)
 
@@ -58,19 +61,42 @@ class GCSDataset(Dataset):
 
     def __getitem__(self, idx):
 
-        # Load in data
-        # the first traj is the least optimal, randomly sampled from the rest of the trajs 
-        # the second traj is the second least optimal, randomly sampled from the rest of the trajs
-        # the last traj is the most optimal trajectory
+        # OLD VERSION
+        # # Load in data
+        # # the first traj is the least optimal, randomly sampled from the rest of the trajs 
+        # # the second traj is the second least optimal, randomly sampled from the rest of the trajs
+        # # the last traj is the most optimal trajectory
 
-        file, traj_idx_1, traj_idx_2, traj_idx_3 = self.index[idx]
-        sample = np.load(file, allow_pickle=True)
+        # file, traj_idx_1, traj_idx_2, traj_idx_3 = self.index[idx]
+        # sample = np.load(file, allow_pickle=True)
+        # map_array = sample["map"].squeeze()
+        # time = np.array([sample["times"][traj_idx_1], sample["times"][traj_idx_2], sample["times"][traj_idx_3]])
+
+        # NEW VERSION
+        # Get data index
+        traj_file = self.index[idx]
+        sample = np.load(traj_file, allow_pickle=True)
         map_array = sample["map"].squeeze()
-        time = np.array([sample["times"][traj_idx_1], sample["times"][traj_idx_2], sample["times"][traj_idx_3]])
+        times = sample["times"]
+        trajs = sample["trajs"]
+
+        traj_idx_3 = 0 # most optimal
+        try:
+            traj_idx_2 = random.choice(range(1, len(trajs)-1))
+            traj_idx_1 = random.choice(range(traj_idx_2, len(trajs)))
+        except:
+            traj_idx_2 = 1
+            traj_idx_1 = 2
+            breakpoint()
+
+        time = np.array([times[traj_idx_1], times[traj_idx_2], times[traj_idx_3]])
 
         traj_1 = self._add_tokens(sample["trajs"][traj_idx_1].squeeze())
         traj_2 = self._add_tokens(sample["trajs"][traj_idx_2].squeeze())
         traj_3 = self._add_tokens(sample["trajs"][traj_idx_3].squeeze())
+
+        if len(traj_1) > self.max_seq_len or len(traj_2) > self.max_seq_len or len(traj_3) > self.max_seq_len:
+            breakpoint()
         
         total_len = traj_1.shape[0] + traj_2.shape[0] + traj_3.shape[0]
         pad_len = self.max_seq_len*self.num_intermediates - total_len

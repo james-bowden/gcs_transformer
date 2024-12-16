@@ -112,11 +112,11 @@ def train(config, args):
                     trajs,
                 ) = data
                 map_array = map_array.to(device)
-                times = times.to(device)
-                trajs = trajs.to(device)
+                times_tensor = times.to(device)
+                traj_tensor = trajs.to(device)
 
-                pred_logits = policy(map_array, trajs)
-                loss = loss_fn(pred_logits, trajs, policy.traj_embs.num_embeddings)
+                pred_logits = policy(map_array, trajs_tensor)
+                loss = loss_fn(pred_logits, traj_tensor, policy.traj_embs.num_embeddings)
                 print("Validation Loss: ", round(loss.item(), 4), round(torch.mean((torch.argmax(pred_logits[:, :-1], dim=-1) == traj_tensor[:, 1:]) * 1.).item(), 4))
                 wandb.log({"val_loss": loss.item()})
 

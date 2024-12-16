@@ -18,5 +18,5 @@ save_freq: 1000
 save_path: /nfs/kun2/users/cglossop/gcs_saved_models
 
 # dataset
-train_data_folder: /nfs/kun2/users/cglossop/tokenized_data_dir/train/train_files.txt
-eval_data_folder: /nfs/kun2/users/cglossop/tokenized_data_dir/eval/eval_files.txt
+train_data_folder: /hdd/optimization_data/tokenized_data_dir_512/train/train_files.txt
+eval_data_folder: /hdd/optimization_data/tokenized_data_dir_512/eval/eval_files.txt
