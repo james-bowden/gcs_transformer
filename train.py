@@ -29,7 +29,7 @@ def train(config, args):
 
     # Make save dir
     os.makedirs(config["save_path"], exist_ok=True)
-    
+
     # create dataset 
     train_dataset = GCSDataset(config["train_data_folder"])
     eval_dataset = GCSDataset(config["eval_data_folder"])
@@ -93,8 +93,8 @@ def train(config, args):
             wandb.log({"train_loss": loss.item()})
 
             if i % config["save_freq"] == 0:
-                torch.save(policy.state_dict(), f"{config['save_path']}/model_{epoch}.pth")
-                print(f"Model saved to {config['save_path']}/model_{epoch}.pth")
+                torch.save(policy.state_dict(), f"{config['save_path']}/model_{i}.pth")
+                print(f"Model saved to {config['save_path']}/model_{i}.pth")
 
 
         policy.eval()
