@@ -5,6 +5,7 @@ import yaml
 import tqdm
 import argparse
 import wandb
+import datetime
 
 import torch
 import torch.nn.functional as F
@@ -27,8 +28,10 @@ def train(config, args):
     num_epochs = config["num_epochs"]
     batch_size = config["batch_size"]
 
-    # Make save dir
+    # Make save dir for current run
     os.makedirs(config["save_path"], exist_ok=True)
+    curr_save_path = "gcs_" + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    os.makedirs(os.path.join(config["save_path"], curr_save_path))
 
     # create dataset 
     train_dataset = GCSDataset(config["train_data_folder"])
@@ -91,10 +94,11 @@ def train(config, args):
             optimizer.step()
             print("Training Loss: ", round(loss.item(), 4), round(torch.mean((torch.argmax(pred_logits[:, :-1], dim=-1) == traj_tensor[:, 1:]) * 1.).item(), 4))
             wandb.log({"train_loss": loss.item()})
+            wandb.log({"train_acc": torch.mean((torch.argmax(pred_logits[:, :-1], dim=-1) == traj_tensor[:, 1:]) * 1.).item()})
 
             if i % config["save_freq"] == 0:
-                torch.save(policy.state_dict(), f"{config['save_path']}/model_{i}.pth")
-                print(f"Model saved to {config['save_path']}/model_{i}.pth")
+                torch.save(policy.state_dict(), f"{os.path.join(config['save_path'], curr_save_path)}/model_{epoch}_{i}.pth")
+                print(f"Model saved to {config['save_path']}/model_{epoch}_{i}.pth")
 
 
         policy.eval()
@@ -105,6 +109,8 @@ def train(config, args):
                 dynamic_ncols=True,
                 desc=f"Training epoch {epoch}",
             )
+            avg_loss = []
+            avg_acc = []
             for i, data in enumerate(tqdm_iter):
                 (
                     map_array,
@@ -115,10 +121,13 @@ def train(config, args):
                 times_tensor = times.to(device)
                 traj_tensor = trajs.to(device)
 
-                pred_logits = policy(map_array, trajs_tensor)
+                pred_logits = policy(map_array, traj_tensor)
                 loss = loss_fn(pred_logits, traj_tensor, policy.traj_embs.num_embeddings)
+                avg_loss.append(loss.item())
+                avg_acc.append(torch.mean((torch.argmax(pred_logits[:, :-1], dim=-1) == traj_tensor[:, 1:]) * 1.).item())
                 print("Validation Loss: ", round(loss.item(), 4), round(torch.mean((torch.argmax(pred_logits[:, :-1], dim=-1) == traj_tensor[:, 1:]) * 1.).item(), 4))
-                wandb.log({"val_loss": loss.item()})
+            wandb.log({"val_loss": np.mean(avg_loss)})
+            wandb.log({"val_acc": np.mean(avg_acc)})
 
     wandb.log({})
     print()
