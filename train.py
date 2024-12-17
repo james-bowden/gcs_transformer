@@ -35,7 +35,7 @@ def train(config, args):
 
     # create dataset 
     train_dataset = GCSDataset(config["train_data_folder"])
-    eval_dataset = GCSDataset(config["eval_data_folder"])
+    eval_dataset = GCSDataset(config["val_data_folder"])
 
     # create dataloader
     train_dataloader = DataLoader(
