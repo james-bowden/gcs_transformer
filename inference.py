@@ -49,16 +49,16 @@ def inference(config, model, map_array):
     for _ in range(max_seq_len):
 
         # Get source mask
-        logits = model.predict(map_array, traj)
+        logits = model(map_array, traj)
         
         next_token = logits.topk(1)[1].view(-1)[-1].item() # num with highest probability
         next_token = torch.tensor([[next_token]], device=device)
 
         # Concatenate previous input with predicted best word
-        traj = torch.cat((y_input, next_item), dim=1)
+        traj = torch.cat((traj, next_token), dim=1)
 
         # Stop if model predicts end of sentence
-        if next_item.view(-1).item() == EOS_token:
+        if next_token.view(-1).item() == eos_token:
             eos_count += 1
             if eos_count == 3:
                 break
@@ -79,28 +79,30 @@ def detokenize_traj(config, traj):
     prev_location = np.array([0, 0, 2.])
 
     for bez_params in traj.reshape(-1, 19):
-            delta_time = (bez_params[0] - num_space_bins) / num_time_bins * (time_max - time_min) + time_min
-            start_time = prev_time
-            end_time = prev_time + delta_time
+        delta_time = (bez_params[0] - num_space_bins) / num_time_bins * (time_max - time_min) + time_min
+        start_time = prev_time
+        end_time = prev_time + delta_time
 
-            if delta_time < 1e-6:
-                continue
+        if delta_time < 1e-6:
+            continue
 
-            ctrl_pts = [prev_location]
-            disc_diffs = bez_params[1:].reshape(-1, 3)
-            for disc_diff in disc_diffs:
-                diff = disc_diff / num_space_bins * (space_max - space_min) + space_min
-                ctrl_pts.append(ctrl_pts[-1] + diff)
+        ctrl_pts = [prev_location]
+        disc_diffs = bez_params[1:].reshape(-1, 3)
+        for disc_diff in disc_diffs:
+            diff = disc_diff / num_space_bins * (space_max - space_min) + space_min
+            ctrl_pts.append(ctrl_pts[-1] + diff)
 
-            prev_time = end_time
-            prev_location = ctrl_pts[-1]
+        prev_time = end_time
+        prev_location = ctrl_pts[-1]
 
-            ctrl_pts = np.array(ctrl_pts).T
+        ctrl_pts = np.array(ctrl_pts).T
 
-            bc = BezierCurve(start_time, end_time, ctrl_pts)
-            bezier_curves.append(bc)
+        bc = BezierCurve(start_time, end_time, ctrl_pts)
+        bezier_curves.append(bc)
 
-        traj = CompositeTrajectory(bezier_curves)
+    traj = CompositeTrajectory(bezier_curves)
+    
+    return traj
 
 def main(args):
     # Load config

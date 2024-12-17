@@ -36,7 +36,7 @@ class GCSTransformer(nn.Module):
         self.linear = nn.Linear(self.d_model, self.traj_embs.num_embeddings)
 
     
-    def forward(self, map_array, traj):
+    def forward(self, map_array, trajs):
         assert map_array.shape[0] == trajs.shape[0]
 
         # Assume map_array has structure:
@@ -44,8 +44,8 @@ class GCSTransformer(nn.Module):
         batch_size, map_seq_len, channels = map_array.shape
         map_embs = self.map_embs(map_array).reshape(batch_size, map_seq_len, -1)
 
-        batch_size, traj_seq_len = traj.shape
-        traj_embs = self.traj_embs(traj)
+        batch_size, traj_seq_len = trajs.shape
+        traj_embs = self.traj_embs(trajs)
         
         # Apply rope after concatenating map and traj embs, then split again.
         all_embs = torch.cat([map_embs, traj_embs], dim=1).reshape(batch_size, map_seq_len + traj_seq_len, self.nhead, self.d_head)
@@ -65,7 +65,3 @@ class GCSTransformer(nn.Module):
         logits = self.linear(output)
 
         return logits
-    
-    def predict(self, map_array):
-
-        
