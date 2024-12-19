@@ -59,12 +59,18 @@ def train(config, args):
                             nlayers=config["num_layers"],
                             num_map_tokens=config["num_map_tokens"],
                             num_channels=config["num_channels"]).to(device)
-
+    if config["load_model"]:
+        print("Loading model from: ", config["load_model"])
+        policy.load_state_dict(torch.load(config["load_model"]))
+        curr_epoch = int(config["load_model"].split("_")[-2])
+    else:
+        curr_epoch = 0
+    
     # create optimizer 
     optimizer = optim.SGD(policy.parameters(), lr=0.01)
 
     # Set up training for number of epochs 
-    for epoch in range(num_epochs):
+    for epoch in range(curr_epoch, num_epochs):
         print("Epoch: ", epoch)
 
         # Train model

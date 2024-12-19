@@ -2,7 +2,7 @@
 docker pull russtedrake/underactuated:e849980
 
 # Start the docker img with interactive shell
-docker run -it -p 8888:8888 -p 7000:7000 -v /home/will/Classwork/EE227B/new_mounted_dir:/mnt russtedrake/underactuated:e849980 bash
+docker run -it --gpus=all -p 8888:8888 -p 7000:7000 -v /home/noam/CS227BT/project:/mnt -v /hdd/optimization_data/tokenized_data_dir_512:/data russtedrake/underactuated:e849980 bash
 
 cd /mnt
 sed -i '/jedi/d;/jupyter/d;' ./requirements.txt
